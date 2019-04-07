@@ -1,0 +1,174 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Список продуктів</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+</head>
+<body>
+    <h2>Список продуктів</h2>
+    <form name="productForm" class="form-inline">
+        <input type="hidden" name="id" value="0" />
+        <div class="form-group">
+            <label for="Name">Назва:</label>
+            <input class="form-control" name="Name" />
+        </div>
+        <div class="form-group">
+            <label for="ImageUrl">Фото:</label>
+            <input class="form-control" name="ImageUrl" />
+        </div>
+        <div class="form-group">
+            <label for="Price">Ціна:</label>
+            <input class="form-control" name="Price" />
+        </div>
+        <div class="panel-body">
+            <button type="submit" class="btn btn-sm btn-primary">Зберегти</button>
+            <a id="reset" class="btn btn-sm btn-primary">Скинути</a>
+        </div>
+    </form>
+    <table class="table table-condensed table-striped table-bordered">
+        <thead><tr><th>Id</th><th>Назва</th><th>Фото</th><th>Ціна</th><th></th></tr></thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        // Отримання всіх товарів
+        function GetProducts() {
+            $.ajax({
+                url: '/api/Products',
+                type: 'GET',
+                contentType: "application/json",
+                success: function (products) {
+                    var rows = "";
+                    $.each(products, function (index, product) {
+                        // додаємо отримані значення в таблицю
+                        rows += row(product);
+                    })
+                    $("table tbody").append(rows);
+                 }
+            });
+        }
+        // Отримання одного товару
+        function GetProduct(id) {
+
+            $.ajax({
+                url: '/api/Products/'+id,
+                type: 'GET',
+                contentType: "application/json",
+                success: function (product) {
+                    console.log("GetProductId", product.id, product.name, product.imageUrl, product.price);
+                    var form = document.forms["productForm"];
+                    form.elements["id"].value = product.id;
+                    form.elements["Name"].value = product.name;
+                    form.elements["ImageUrl"].value = product.imageUrl;
+                    form.elements["Price"].value = product.price;
+                    
+                }
+            });
+        }
+        // Додавання товару
+        function CreateProduct(productName, productImageUrl, productPrice) {
+            console.log("CreateProduct", productName, productImageUrl, productPrice);
+            $.ajax({
+                url: "api/Products",
+                contentType: "application/json",
+                method: "POST",
+                data: JSON.stringify({
+                    Name: productName,
+                    ImageUrl: productImageUrl,
+                    Price: productPrice,
+                }),
+                success: function (product) {
+                    reset();
+                    $("table tbody").append(row(product));
+                }
+            })
+        }
+        // Изменение пользователя
+        function EditProduct(productId, productName, productImageUrl, productPrice) {
+            console.log("EditProduct", productId, productName, productImageUrl, productPrice);
+            $.ajax({
+                url: "api/Products",
+                contentType: "application/json",
+                method: "PUT",
+                data: JSON.stringify({
+                    id: productId,
+                    Name: productName,
+                    ImageUrl: productImageUrl,
+                    Price: productPrice
+                }),
+                success: function (product) {
+                    reset();
+                    console.log("EditReturnProduct", productId, productName, productImageUrl, productPrice);
+                    $("tr[data-rowid='" + product.id + "']").replaceWith(row(product));
+                    
+                }
+            })
+            
+        }
+
+        // Скидання форми
+        function reset() {
+            var form = document.forms["productForm"];
+            form.reset();
+            form.elements["id"].value = 0;
+        }
+
+        // Видалення продукту
+        function DeleteProduct(id) {
+            $.ajax({
+                url: "api/Products/"+id,
+                contentType: "application/json",
+                method: "DELETE",
+                success: function (product) {
+                    $("tr[data-rowid='" + product.id + "']").remove();
+                }
+            })
+        }
+        // створення строки для таблиці
+        var row = function (product) {
+            return "<tr data-rowid='" + product.id + "'><td>" + product.id + "</td>" +
+                "<td>" + product.name + "</td> <td>" + product.imageUrl + "</td> <td>" + product.price + "</td>" +
+                "<td><a class='editLink' style='cursor: pointer;' data-id='" + product.id + "'>Змінити</a> | " +
+                "<a class='removeLink' style='cursor: pointer;' data-id='" + product.id + "'>Видалити</a></td></tr>";
+        }
+        // сброс значений формы
+        $("#reset").click(function (e) {
+            e.preventDefault();
+            reset();
+        })
+
+        // отправка формы
+        $("form").submit(function (e) {
+            e.preventDefault();
+            var id = this.elements["id"].value;
+            var name = this.elements["Name"].value;
+            var imageurl = this.elements["ImageUrl"].value;
+            var price = this.elements["Price"].value;
+            if (id == 0)
+                CreateProduct(name, imageurl, price);
+            else
+                EditProduct(id, name, imageurl, price);
+        });
+
+        // нажимаем на ссылку Изменить
+        $("body").on("click", ".editLink", function () {
+            var id = $(this).data("id");
+            console.log("click edit id =",id);
+            GetProduct(id);
+        })
+        // нажимаем на ссылку Удалить
+        $("body").on("click", ".removeLink", function () {
+            var id = $(this).data("id");
+            console.log("click delete");
+            DeleteProduct(id);
+        })
+
+        // загрузка пользователей
+        GetProducts();
+
+    </script>
+</body>
+</html>
